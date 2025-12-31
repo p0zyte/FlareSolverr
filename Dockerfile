@@ -1,5 +1,4 @@
 FROM python:3.13-slim-bookworm AS builder
-
 # Build dummy packages to skip installing them and their dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends equivs \
@@ -11,12 +10,9 @@ RUN apt-get update \
     && printf 'Section: misc\nPriority: optional\nStandards-Version: 3.9.2\nPackage: adwaita-icon-theme\nVersion: 99.0.0\nDescription: Dummy package for adwaita-icon-theme\n' >> adwaita-icon-theme \
     && equivs-build adwaita-icon-theme \
     && mv adwaita-icon-theme_*.deb /adwaita-icon-theme.deb
-
 FROM python:3.13-slim-bookworm
-
 # Copy dummy packages
 COPY --from=builder /*.deb /
-
 # Install dependencies and create flaresolverr user
 # You can test Chromium running this command inside the container:
 #    xvfb-run -s "-screen 0 1600x1200x24" chromium --no-sandbox
@@ -42,38 +38,30 @@ RUN dpkg -i /libgl1-mesa-dri.deb \
     # Create config dir
     && mkdir /config \
     && chown flaresolverr:flaresolverr /config
-
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install -r requirements.txt \
     # Remove temporary files
     && rm -rf /root/.cache
-
 USER flaresolverr
-
 RUN mkdir -p "/app/.config/chromium/Crash Reports/pending"
-
 COPY src .
+# Increase MEMFILE_MAX size from 102400 to 102400000
+RUN find /app -type f -name "*.py" -exec sed -i 's/MEMFILE_MAX = 102400/MEMFILE_MAX = 102400000/' {} +
 COPY package.json ../
-
 EXPOSE 8191
 EXPOSE 8192
-
 # dumb-init avoids zombie chromium processes
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
 CMD ["/usr/local/bin/python", "-u", "/app/flaresolverr.py"]
-
 # Local build
 # docker build -t ngosang/flaresolverr:3.4.6 .
 # docker run -p 8191:8191 ngosang/flaresolverr:3.4.6
-
 # Multi-arch build
 # docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 # docker buildx create --use
 # docker buildx build -t ngosang/flaresolverr:3.4.6 --platform linux/386,linux/amd64,linux/arm/v7,linux/arm64/v8 .
 #   add --push to publish in DockerHub
-
 # Test multi-arch build
 # docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 # docker buildx create --use
