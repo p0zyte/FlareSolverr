@@ -43,12 +43,12 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt \
     # Remove temporary files
     && rm -rf /root/.cache
-USER flaresolverr
-RUN mkdir -p "/app/.config/chromium/Crash Reports/pending"
 COPY src .
 # Increase MEMFILE_MAX size from 102400 to 102400000
 RUN find /app -type f -name "*.py" -exec sed -i 's/MEMFILE_MAX = 102400/MEMFILE_MAX = 102400000/' {} +
 COPY package.json ../
+USER flaresolverr
+RUN mkdir -p "/app/.config/chromium/Crash Reports/pending"
 EXPOSE 8191
 EXPOSE 8192
 # dumb-init avoids zombie chromium processes
